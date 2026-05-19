@@ -110,6 +110,27 @@ BigNumber Polynom::max() {
     }
     return max;
 }
+BigNumber BigNumber::round(BigNumber x) {
+    std::string a = "";
+    int integerSize = x.getValue().size() - x.getPoint();
+    for (int i = 0; i < integerSize; i++)
+        a += x.getValue()[i];
+    if (a == "")
+        a = "0";
+    BigNumber res{a, 0, x.getSign()};
+    if (x.getSign() == 1 && x.getPoint() > 0) {
+        bool frac = false;
+        for (int i = integerSize; i < x.getValue().size(); i++) {
+            if (x.getValue()[i] != '0') {
+                frac = true;
+                break;
+            }
+        }
+        if (frac)
+            res = res - BigNumber{"1"};
+    }
+    return res;
+}
 std::vector<BigNumber> Polynom::Solve() {
     std::vector<BigNumber> roots;
     std::list<BigNumber> n;
@@ -208,7 +229,13 @@ BigNumber BigNumber::C(BigNumber x, BigNumber y) {
 Polynom Polynom::sin() {
     std::vector<BigNumber> poly = polynom;
     std::list<BigNumber> poly1;
-    for (int i=0; i<poly.size(); i++) poly1.push_back(poly[i]);
+    for (int i=0; i<poly.size(); i++) {
+        if (i==0 && (BigNumber{poly[i]-BigNumber{"314159265",8}}.getSign()==0||BigNumber{poly[i]+BigNumber{"314159265",8}}.getSign()==1)) {
+            poly1.push_back(BigNumber{poly[0]-BigNumber{"2"}*BigNumber{"314159265",8}*BigNumber{BigNumber{poly[0]+BigNumber{"314159265",8}}/BigNumber{BigNumber{"2"}*BigNumber{"314159265",8}}}.round(BigNumber{BigNumber{poly[0]+BigNumber{"314159265",8}}/BigNumber{BigNumber{"2"}*BigNumber{"314159265",8}}})});
+            continue;
+        }
+        poly1.push_back(poly[i]);
+    }
     Polynom poly2{poly1};
     Polynom power = poly2;
     Polynom sol({BigNumber{"0"}});
@@ -224,7 +251,13 @@ Polynom Polynom::sin() {
 Polynom Polynom::cos() {
     std::vector<BigNumber> poly = polynom;
     std::list<BigNumber> poly1;
-    for (int i=0; i<poly.size(); i++) poly1.push_back(poly[i]);
+    for (int i=0; i<poly.size(); i++) {
+        if (i==0 && (BigNumber{poly[i]-BigNumber{"314159265",8}}.getSign()==0||BigNumber{poly[i]+BigNumber{"314159265",8}}.getSign()==1)) {
+            poly1.push_back(BigNumber{poly[0]-BigNumber{"2"}*BigNumber{"314159265",8}*BigNumber{BigNumber{poly[0]+BigNumber{"314159265",8}}/BigNumber{BigNumber{"2"}*BigNumber{"314159265",8}}}.round(BigNumber{BigNumber{poly[0]+BigNumber{"314159265",8}}/BigNumber{BigNumber{"2"}*BigNumber{"314159265",8}}})});
+            continue;
+        }
+        poly1.push_back(poly[i]);
+    }
     Polynom poly2{poly1};
     Polynom power({BigNumber{"1"}});
     Polynom sol({BigNumber{"0"}});
@@ -292,26 +325,77 @@ void Polynom::Truncate(int max_degree) {
         polynom.push_back(BigNumber{"0"});
     }
 }
+std::vector<BigNumber> Polynom::getVector() {
+    return polynom;
+}
+BigNumber BigNumber::log() {
+    BigNumber ln2 = BigNumber{"069314718056",11};
+    BigNumber p = BigNumber{"1"};
+    BigNumber i = BigNumber{"0"};
+    BigNumber xx = (*this);
+    while (BigNumber{p-xx}.getSign()==1) {
+        p = p * BigNumber{"2"};
+        i = i + BigNumber{"1"};
+    }
+    BigNumber n = xx/p;
+    BigNumber ln_n = (Polynom({n}).logn()).getVector()[0];
+    return ln_n+(ln2*i);
+}
 Polynom Polynom::logn() {
     const int N = 12;
     Polynom one({BigNumber{"1"}});
-    Polynom two({BigNumber{"2"}});
-    Polynom x = *this;
-    Polynom t = (x - one).del(x + one);
+    Polynom zero({BigNumber{"0"}});
+    BigNumber ln2 = BigNumber{"069314718056",11};
+    bool allZero = true;
+    for (size_t i = 0; i < polynom.size(); i++) {
+        if (!(polynom[i].getValue() == BigNumber{"0"}.getValue() &&
+              polynom[i].getPoint() == BigNumber{"0"}.getPoint() &&
+              polynom[i].getSign() == BigNumber{"0"}.getSign())) {
+            allZero = false;
+            break;
+        }
+    }
+    if (allZero) {
+        throw std::runtime_error("log(0)");
+    }
+    BigNumber c = polynom[0];
+    BigNumber p = BigNumber{"1"};
+    BigNumber k = BigNumber{"0"};
+    while ((p - c).getSign() == 1) {
+        p = p * BigNumber{"2"};
+        k = k + BigNumber{"1"};
+    }
+    BigNumber n = c / p;
+    BigNumber z =
+        (n - BigNumber{"1"}) /
+        (n + BigNumber{"1"});
+    BigNumber zterm = z;
+    BigNumber ln_c{"0"};
+    for (int i = 0; i < N; i++) {
+        int deg = 2 * i + 1;
+        BigNumber coeff =
+            BigNumber{"1"} /
+            BigNumber{std::to_string(deg)};
+        ln_c = ln_c + zterm * coeff;
+        zterm = zterm * z * z;
+    }
+    ln_c = ln_c * BigNumber{"2"};
+    ln_c = ln_c + (ln2 * k);
+    Polynom Q = this->del(Polynom({c}));
+    Polynom t = (Q - one).del(Q + one);
     Polynom term = t;
-    Polynom result({BigNumber{"0"}});
-    for (int n = 0; n < N; n++) {
-        int k = 2 * n + 1;
-        BigNumber denom = BigNumber{std::to_string(k)};
-        BigNumber coeff = BigNumber{"1"} / denom;
-        Polynom add = term.Multyply(coeff);
-        add.Truncate(12);
-        result = result + add;
-        result.Truncate(12);
+    Polynom result = zero;
+    for (int i = 0; i < N; i++) {
+        int deg = 2 * i + 1;
+        BigNumber coeff =
+            BigNumber{"1"} /
+            BigNumber{std::to_string(deg)};
+        result = result + term.Multyply(coeff);
         term = term * t * t;
-        term.Truncate(12);
     }
     result = result.Multyply(BigNumber{"2"});
+    result.polynom[0] =
+        result.polynom[0] + ln_c;
     result.Truncate(12);
     return result;
 }
@@ -336,7 +420,7 @@ Polynom Polynom::pow(BigNumber n) {
     Polynom A = f*ln;
     Polynom term = Polynom({BigNumber{"1"}});
     Polynom result({BigNumber{"0"}});
-    for (BigNumber k{"0"}; BigNumber{k-BigNumber{"8"}}.getSign()==1; k = k + BigNumber{"1"}) {
+    for (BigNumber k{"0"}; BigNumber{k-BigNumber{"12"}}.getSign()==1; k = k + BigNumber{"1"}) {
         BigNumber denom = BigNumber{"1"}.factorial(k);
         BigNumber coeff = BigNumber{"1"} / denom;
         Polynom add = term.Multyply(coeff);
