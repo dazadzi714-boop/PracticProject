@@ -348,6 +348,7 @@ public:
     Polynom cos();
     Polynom del(const Polynom& denom);
     Polynom logn();
+    Polynom loga(Polynom b);
     Polynom tan();
     BigNumber integral(BigNumber a, BigNumber b);
     Polynom pow(BigNumber n);
