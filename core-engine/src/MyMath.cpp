@@ -399,6 +399,15 @@ Polynom Polynom::logn() {
     result.Truncate(12);
     return result;
 }
+Polynom Polynom::loga(Polynom b) {
+    std::vector<BigNumber> poly = polynom;
+    std::list<BigNumber> poly1;
+    for (int i=0; i<poly.size(); i++) {
+        poly1.push_back(poly[i]);
+    }
+    Polynom poly2{poly1};
+    return b.logn().del(poly2.logn());    
+}
 BigNumber Polynom::integral(BigNumber a, BigNumber b) {
     BigNumber h = (b - a) / BigNumber{std::to_string(100)};
     BigNumber sum = (*this)(a) + (*this)(b);
