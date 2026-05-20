@@ -551,4 +551,10 @@ int main() {
         solv[i].print(1);
         std::cout<<" ";
     }
+    std::cout<<std::endl;
+    Polynom{Polynom({BigNumber{"2"}}).loga(Polynom({BigNumber{"2"}}))}.PolynomPrint();
+    Polynom{Polynom({BigNumber{"2"}}).loga(Polynom({BigNumber{"4"}}))}.PolynomPrint();
+    Polynom{Polynom({BigNumber{"4"}}).loga(Polynom({BigNumber{"2"}}))}.PolynomPrint();
+    Polynom{Polynom({BigNumber{"2000"}}).loga(Polynom({BigNumber{"2"}}))}.PolynomPrint();
+    Polynom{Polynom({BigNumber{"2"}}).loga(Polynom({BigNumber{"2000"}}))}.PolynomPrint();
 }
